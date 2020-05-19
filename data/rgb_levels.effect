@@ -1,0 +1,41 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+uniform float3 rgb_min;
+uniform float3 rgb_scale;
+
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+
+float4 DoLevel(VertData v_in) : TARGET
+{
+	float4 rgba = image.Sample(textureSampler, v_in.uv);
+
+    float3 leveled = saturate((rgba.rgb - rgb_min) * rgb_scale);
+    return float4(leveled, rgba.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = DoLevel(v_in);
+	}
+}
