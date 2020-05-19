@@ -11,6 +11,10 @@
 #define SETTINGS_BLUE_MIN		"blue_min"
 #define SETTINGS_BLUE_MAX		"blue_max"
 
+#define MAX(a,b)				({ __typeof__ (a) _a = (a); \
+								   __typeof__ (b) _b = (b); \
+								   _a > _b ? _a : _b; })
+
 struct rgb_levels_filter_data {
 	obs_source_t *context;
 	gs_effect_t *effect;
@@ -32,22 +36,17 @@ static inline void rgb_levels_update(void *data,
                                      obs_data_t *settings)
 {
     struct rgb_levels_filter_data *filter = data;
+
     int r_min = obs_data_get_int(settings, SETTINGS_RED_MIN);
-    int r_max = obs_data_get_int(settings, SETTINGS_RED_MAX);
     int g_min = obs_data_get_int(settings, SETTINGS_GREEN_MIN);
-    int g_max = obs_data_get_int(settings, SETTINGS_GREEN_MAX);
     int b_min = obs_data_get_int(settings, SETTINGS_BLUE_MIN);
-    int b_max = obs_data_get_int(settings, SETTINGS_BLUE_MAX);
+    int r_max = MAX(r_min + 1, obs_data_get_int(settings, SETTINGS_RED_MAX));
+    int g_max = MAX(g_min + 1, obs_data_get_int(settings, SETTINGS_GREEN_MAX));
+    int b_max = MAX(b_min + 1, obs_data_get_int(settings, SETTINGS_BLUE_MAX));
     
-    //char mbuffer[128]; 
-    //sprintf(mbuffer, "DEBUG: r_min = %d r_max = %d", r_min, r_max);
-    //blog(300, mbuffer);
     vec3_set( &filter->rgb_min, r_min / 255.0f, g_min / 255.0f, b_min / 255.0f);
     vec3_set( &filter->rgb_scale, 255.0f / (r_max - r_min), 
              255.0f / (g_max - g_min), 255.0f / (b_max - b_min) );
-    //sprintf(mbuffer, "DEBUG: filter->rgb_min.r = %f filter->rgb_scale.r = %f\n ",
-    //        filter->rgb_min.x, filter->rgb_scale.x);
-    //blog(300, mbuffer);
 }
 
 static void rgb_levels_destroy(void *data)
@@ -67,6 +66,7 @@ static void *rgb_levels_create(obs_data_t *settings, obs_source_t *context)
 	struct rgb_levels_filter_data *filter = bzalloc(sizeof(struct rgb_levels_filter_data));
     char *effect_path = obs_module_file("rgb_levels.effect");
 	filter->context = context;
+
 	obs_enter_graphics();
     filter->effect = gs_effect_create_from_file(effect_path, NULL);
     if (filter->effect) {
@@ -76,6 +76,7 @@ static void *rgb_levels_create(obs_data_t *settings, obs_source_t *context)
                         filter->effect, "rgb_scale");
     }
     obs_leave_graphics();
+
     bfree(effect_path);
     if (!filter->effect) {
         rgb_levels_destroy(filter);
@@ -92,8 +93,10 @@ static void rgb_levels_render(void *data, gs_effect_t *effect)
 	if (!obs_source_process_filter_begin(filter->context, GS_RGBA,
 				OBS_ALLOW_DIRECT_RENDERING))
 		return;
+
     gs_effect_set_vec3(filter->min_param, &filter->rgb_min);
     gs_effect_set_vec3(filter->scale_param, &filter->rgb_scale);
+
 	obs_source_process_filter_end(filter->context, filter->effect, 0, 0);
 
 	UNUSED_PARAMETER(effect);
