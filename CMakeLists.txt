@@ -15,6 +15,7 @@ endif()
 ##########################################
 # find libobs                            #
 ##########################################
+set (LIBOBS_INCLUDE_DIR "${OBS_SRC_DIR}/libobs")
 include(external/FindLibObs.cmake)
 find_package(LibObs REQUIRED)
 
@@ -23,7 +24,6 @@ set(obs-rgb-levels-filter_SOURCES
 	)
 
 include_directories(
-	/usr/include/obs
 	${LIBOBS_INCLUDE_DIR}
 )
 
